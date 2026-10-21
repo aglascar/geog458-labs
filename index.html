@@ -1,0 +1,44 @@
+<!DOCTYPE html> <!--shows the type of document being worked on -->
+<html lang='en'> <!--configured for english-->
+<head> <!--contains all metadata for the map-->
+    <meta charset='utf-8' /> <!--sets the time for the web map-->
+    <title>Lab 1-2 Map</title> <!--defines browser map title-->
+    <meta name='viewport' content='width=device-width, initial-scale=1' /> <!--makes the map render properly-->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet"> <!--loads the mapbox content-->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script> <!--renders the mapbox content-->
+    <style>
+        body { margin: 0; padding: 0; } 
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; } 
+   </style>
+</head>
+<body> <!--contains what is being displayed, in this case the UW campus-->
+   <div id='map'></div> <!--container where mapbox content will load-->
+   <script> <!--authenticates mapbox toxen-->
+      mapboxgl.accessToken = 'pk.eyJ1IjoiYXVzZmxvd2UiLCJhIjoiY212OHh2Zng4MDNvdTJ4cTNiM2l6MDlpciJ9.N-AtDC9cXU1lzOHbHinHeg';
+      const mymap = new mapboxgl.Map({
+             container: 'map',
+             // style: 'mapbox://styles/mapbox/satellite-streets-v12',
+             // projection: 'globe', //Display the map as a globe since satellite-v9 defaults to Mercator
+             center: [-122.3212, 47.6150],
+             zoom:15
+          }); //all the previous steps define where the map will center when the webpage is loaded and the basemap style
+mymap.addControl(new mapboxgl.FullscreenControl());
+   mymap.addControl(new mapboxgl.NavigationControl());
+      mymap.on('style.load', () => {
+         // Setting the lighting to dusk
+          mymap.setConfigProperty('basemap', 'lightPreset', 'dusk');
+          // Remove clutter from map
+          mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+
+          // Additional Property 1: Hide 3D objects and buildings pointing up on map. Helps to make the map cleaner, and ignores the building heights when you want a clean, straight-down facing map
+          mymap.setConfigProperty('basemap', 'show3dObjects', false);
+
+          // Additional Property 2: Change the font to Alegreya. It's elegant and also bold and easy to read, so the map is easier on the eyes. 
+          mymap.setConfigProperty('basemap', 'font', 'Alegreya');
+      });
+   </script> <!--establishes the zoom and control buttons on the map-->
+
+   <!-- For the first additional style property, I disabled 3d objects from being present on the map. This creates every object on the map to be presented as 2d. This helps when creating analytical maps (like comparing census tracts) since a 3d shadow can obscure smaller features like streets and alleys and disturbs the visual hierarchy.-->
+    <!-- For the second additional style property, I changed the font to Alegreya. This font style is bolded, but also has an aesthetic draw to it to create a more narrative map (rather than a purely utilitarian map).-->
+</body>
+</html>

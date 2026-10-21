@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>World Cities Population Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+        /* Map title card */
+        #title-card {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 18px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            z-index: 1;
+            max-width: 280px;
+        }
+        #title-card h2 {
+            margin: 0 0 4px 0;
+            font-size: 16px;
+            color: #222;
+        }
+        #title-card p {
+            margin: 0;
+            font-size: 11px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        /* Legend panel */
+        #legend {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 145px;
+            background: #fff;
+            margin-right: 20px;
+            margin-bottom: 30px;
+            padding: 10px 14px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            z-index: 1;
+            font-size: 12px;
+        }
+
+        .break {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+        }
+
+        .dot {
+            display: inline-block;
+            border-radius: 50%;
+            margin-right: 8px;
+            flex-shrink: 0;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        .dot-label {
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="title-card">
+        <h2>Major World Cities</h2>
+    </div>
+
+    <div id="legend"></div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYXVzZmxvd2UiLCJhIjoiY212OHh2Zng4MDNvdTJ4cTNiM2l6MDlpciJ9.N-AtDC9cXU1lzOHbHinHeg';
+        
+        const mymap = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            projection: 'globe',
+            center: [-96, 37.8],
+            zoom: 1.5
+        });
+
+        mymap.on('style.load', () => {
+            mymap.setFog({});
+        });
+
+        mymap.on('load', () => {
+            mymap.addSource('population', {
+                type: 'geojson',
+                data: 'data/world-cities.geojson'
+            });
+
+            mymap.addLayer({
+                id: 'population-layer',
+                type: 'circle',
+                source: 'population',
+                paint: {
+                    'circle-radius': [
+                        'step',
+                        ['to-number', ['get', 'population'], 0],
+                        2,          // < 100k
+                        100000, 3,  // 100k - 1M
+                        1000000, 6, // 1M - 5M
+                        5000000, 9, // 5M - 10M
+                        10000000, 14 // 10M+ Megacity
+                    ],
+                    'circle-color': [
+                        'step',
+                        ['to-number', ['get', 'population'], 0],
+                        '#777777',             // < 1 Million
+                        1000000, '#e74c3c'      // >= 1 Million (Bright red)
+                    ],
+                    'circle-opacity': 0.85,
+                    'circle-stroke-width': [
+                        'case',
+                        ['>=', ['to-number', ['get', 'population'], 0], 1000000],
+                        1,
+                        0
+                    ],
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            mymap.on('click', 'population-layer', (event) => {
+                const feature = event.features[0];
+                const coordinates = feature.geometry.coordinates.slice(0, 2);
+
+                const cityName = feature.properties.accentcity || feature.properties.city || 'Unknown City';
+                const popNum = feature.properties.population;
+                const formattedPop = popNum ? Number(popNum).toLocaleString() : 'N/A';
+                const country = feature.properties.country ? feature.properties.country.toUpperCase() : '';
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`<strong>${cityName}${country ? ' (' + country + ')' : ''}</strong><br>Population: ${formattedPop}`)
+                    .addTo(mymap);
+            });
+
+            mymap.on('mouseenter', 'population-layer', () => {
+                mymap.getCanvas().style.cursor = 'pointer';
+            });
+            mymap.on('mouseleave', 'population-layer', () => {
+                mymap.getCanvas().style.cursor = '';
+            });
+
+            const legend = document.getElementById('legend');
+            const tiers = [
+                { label: '10M+ Megacity', size: 16, color: '#e74c3c' },
+                { label: '5M – 10M', size: 12, color: '#e74c3c' },
+                { label: '1M – 5M', size: 8, color: '#e74c3c' },
+                { label: '&lt; 1 Million', size: 4, color: '#777777' }
+            ];
+
+            let legendHtml = '<strong>City Population</strong>';
+
+            tiers.forEach(t => {
+                legendHtml += `
+                    <div class="break">
+                        <i class="dot" style="background:${t.color}; width:${t.size}px; height:${t.size}px;"></i>
+                        <span class="dot-label">${t.label}</span>
+                    </div>
+                `;
+            });
+
+            legend.innerHTML = legendHtml;
+        });
+    </script>
+</body>
+</html>

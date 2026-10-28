@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 3 Pages</title>
+  <style>
+    :root {
+      --bg: #f2f5f7;
+      --card: #ffffff;
+      --accent: #18364d;
+      --accent-2: #4c6982;
+      --border: #dfe7ee;
+      --text: #1d2c39;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.5 Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 2vw + 1rem, 2.8rem);
+      color: var(--accent);
+    }
+    .intro {
+      margin: 0 0 28px;
+      color: var(--accent-2);
+      font-size: 1.05rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 8px 18px rgba(24, 54, 77, 0.06);
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 1.35rem;
+    }
+    .card p {
+      margin: 0 0 16px;
+      color: var(--text);
+    }
+    .button {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .button.secondary {
+      background: #edf4fa;
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>GEOG 458 Lab 3</h1>
+    <p class="intro">Two standalone map pages for the Puget Sound air quality and temperature analysis.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>PM2.5 Map</h2>
+        <p>Estimated particulate matter concentrations across Puget Sound.</p>
+        <a class="button" href="alexlascar_lab3-1.html">Open PM2.5 page</a>
+      </section>
+
+      <section class="card">
+        <h2>Temperature Map</h2>
+        <p>Interpolated maximum summer temperature surface with station observations.</p>
+        <a class="button secondary" href="alexlascar_lab3-2.html">Open temperature page</a>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

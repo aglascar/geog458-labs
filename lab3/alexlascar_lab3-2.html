@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Puget Sound Summer Temperatures</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css">
+  <style>
+    body { margin: 0; font: 14px/1.5 Arial, sans-serif; color: #182e3a; }
+    #map { position: absolute; inset: 0; }
+    #panel {
+      position: absolute; top: 12px; left: 12px; padding: 16px;
+      width: 260px; max-width: calc(100% - 100px); background: white;
+      max-height: calc(100% - 80px); overflow: auto; border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    h1 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 8px 0; }
+    .ramp {
+      height: 14px;
+      /* Adjust gradient colors to match your QGIS color ramp */
+      background: linear-gradient(to right, #4575b4, #ffffbf, #d73027);
+    }
+    .values { display: flex; justify-content: space-between; }
+    .maplibregl-popup-content { white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <section id="panel">
+    <h1>Puget Sound Temperatures</h1>
+    <p>Summer 2024 | NOAA Climate Data Online</p>
+    <p id="status">Map loaded.</p>
+    <div id="surface-control">
+      <label><input id="show-surface" type="checkbox" checked> Show temperature surface</label>
+    </div>
+    <div id="station-control">
+      <label><input id="show-stations" type="checkbox" checked> Show weather stations</label>
+    </div>
+    <div id="legend">
+      <p><strong>Estimated Max Temp (°F)</strong></p>
+      <div class="ramp"></div>
+      <!-- Replace values with your actual dataset min, median, and max -->
+      <div class="values"><span>83°</span><span>90°</span><span>99°</span></div>
+      <p>IDW surface interpolated between NOAA GHCN stations.</p>
+    </div>
+  </section>
+
+  <script type="module">
+    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {},
+        layers: [{ id: 'background', type: 'background',
+          paint: { 'background-color': '#edf1f0' } }]
+      },
+      center: [-122.0, 47.60],
+      zoom: 8.5,
+      minZoom: 8,
+      maxZoom: 12,
+      maxBounds: [[-123.30, 46.90], [-121.10, 48.50]]
+    });
+
+    map.addControl(new maplibregl.NavigationControl());
+    map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }));
+
+    map.on('error', (event) => {
+      document.getElementById('status').textContent =
+        'Load error: check file paths and browser Console.';
+      console.error(event.error);
+    });
+
+    map.on('load', () => {
+      // 1. Independent Basemap Tiles
+      map.addSource('basemap-tiles', {
+        type: 'raster',
+        tiles: ['assets/mapbox-independent/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 8,
+        maxzoom: 12,
+        bounds: [-123.30, 46.90, -121.10, 48.50],
+        attribution: '© Mapbox © OpenStreetMap'
+      });
+      map.addLayer({
+        id: 'basemap',
+        type: 'raster',
+        source: 'basemap-tiles',
+        paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 }
+      });
+
+      // 2. Thematic Temperature Tiles
+      map.addSource('temp-tiles', {
+        type: 'raster',
+        tiles: ['assets/weather-independent/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 8,
+        maxzoom: 12,
+        bounds: [-123.30, 46.90, -121.10, 48.50],
+        attribution: 'NOAA Climate Data Online; IDW by [Your Name]'
+      });
+      map.addLayer({
+        id: 'temp-surface',
+        type: 'raster',
+        source: 'temp-tiles',
+        paint: { 'raster-opacity': 0.8, 'raster-fade-duration': 0 }
+      });
+
+      // Layer visibility toggle
+      document.getElementById('show-surface').addEventListener('change', (event) => {
+        map.setLayoutProperty('temp-surface', 'visibility',
+          event.target.checked ? 'visible' : 'none');
+        document.getElementById('legend').hidden = !event.target.checked;
+      });
+
+      // 3. Station Vector Data
+      // The file is exported in EPSG:3857, while MapLibre GeoJSON requires WGS84.
+      // Use each station's LONGITUDE/LATITUDE properties to create WGS84 positions.
+      fetch('Data/lab3-weather-data/weatherstations.geojson')
+        .then((response) => {
+          if (!response.ok) throw new Error('Weather station file could not be loaded');
+          return response.json();
+        })
+        .then((weatherData) => {
+          const wgs84Data = {
+            type: 'FeatureCollection',
+            features: weatherData.features.map((feature) => ({
+              ...feature,
+              geometry: {
+                type: 'Point',
+                coordinates: [feature.properties.LONGITUDE, feature.properties.LATITUDE]
+              }
+            }))
+          };
+
+          map.addSource('station-data', {
+            type: 'geojson',
+            data: wgs84Data
+          });
+          map.addLayer({
+            id: 'stations',
+            type: 'circle',
+            source: 'station-data',
+            paint: {
+              'circle-radius': 6,
+              'circle-color': '#b30000',
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-width': 2
+            }
+          });
+
+          map.on('click', 'stations', (event) => {
+            const feature = event.features[0];
+            const props = feature.properties;
+            new maplibregl.Popup()
+              .setLngLat(feature.geometry.coordinates)
+              .setText([
+                props.NAME || props.STATION_NAME || 'Weather Station',
+                'Max Temp: ' + props.TMAX + ' °F',
+                'Station ID: ' + props.STATION
+              ].join('\n'))
+              .addTo(map);
+          });
+
+          map.on('mouseenter', 'stations', () => { map.getCanvas().style.cursor = 'pointer'; });
+          map.on('mouseleave', 'stations', () => { map.getCanvas().style.cursor = ''; });
+
+          document.getElementById('show-stations').addEventListener('change', (event) => {
+            map.setLayoutProperty('stations', 'visibility',
+              event.target.checked ? 'visible' : 'none');
+          });
+
+          document.getElementById('status').textContent = 'Click a station to view recorded values.';
+        })
+        .catch((error) => {
+          document.getElementById('status').textContent = 'Weather station load error: ' + error.message;
+          console.error(error);
+        });
+    });
+  </script>
+</body>
+</html>
